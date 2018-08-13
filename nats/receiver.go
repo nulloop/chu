@@ -36,12 +36,7 @@ func checkPath(path string) error {
 }
 
 func mergePath(base, path string) string {
-	err := checkPath(base)
-	if err != nil {
-		panic(err)
-	}
-
-	err = checkPath(path)
+	err := checkPath(path)
 	if err != nil {
 		panic(err)
 	}
