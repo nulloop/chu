@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -53,7 +54,7 @@ func mergePath(base, path string) string {
 }
 
 func (n *NatsReceiver) Use(middlewares ...func(choo.Handler) choo.Handler) {
-
+	n.middlewares = append(n.middlewares, middlewares...)
 }
 
 func (n *NatsReceiver) Route(path string, fn func(choo.Receiver)) choo.Receiver {
@@ -102,10 +103,20 @@ func (n *NatsReceiver) Handle(subject string, h choo.HandlerFunc) {
 	}
 
 	n.provier.conn.Subscribe(path, func(msg *stan.Msg) {
-		// TODO: pass the proper message here
-		var message choo.Message
+		message := &NatsMessage{}
 
-		err := handler.ServeMessage(message)
+		// this will decode id and message as bytes
+		err := message.decode(msg.Data)
+		if err != nil {
+			panic(err)
+		}
+
+		message.sequence = msg.Sequence
+		message.subject = msg.Subject
+		message.ctx = context.Background()
+		message.timestamp = msg.Timestamp
+
+		err = handler.ServeMessage(message)
 
 		if err == nil {
 			err = msg.Ack()
@@ -155,13 +166,20 @@ func (n *NatsReceiver) HandleQueue(subject string, queueName string, h choo.Hand
 	}
 
 	n.provier.conn.QueueSubscribe(path, queueName, func(msg *stan.Msg) {
-		// TODO: pass the proper message here
-		message := &NatsMessage{
-			//body
+		message := &NatsMessage{}
+
+		// this will decode id and message as bytes
+		err := message.decode(msg.Data)
+		if err != nil {
+			panic(err)
 		}
 
-		err := handler.ServeMessage(message)
+		message.sequence = msg.Sequence
+		message.subject = msg.Subject
+		message.ctx = context.Background()
+		message.timestamp = msg.Timestamp
 
+		err = handler.ServeMessage(message)
 		if err == nil {
 			err = msg.Ack()
 		}
