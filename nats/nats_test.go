@@ -2,14 +2,14 @@ package nats_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
-
-	"github.com/nulloop/choo"
 
 	gonats "github.com/nats-io/go-nats"
 	"github.com/nats-io/nats-streaming-server/server"
 
+	"github.com/nulloop/choo"
 	"github.com/nulloop/choo/nats"
 )
 
@@ -106,15 +106,20 @@ func TestRoute(t *testing.T) {
 
 	r := provider.Receiver()
 
-	wg.Add(1)
+	wg.Add(2)
 
-	r.Route("root", func(r choo.Receiver) {
-		// r.Use(func(h choo.Handler) choo.Handler {
-		// 	return choo.HandlerFunc(func(msg choo.Message) error {
-		// 		fmt.Println("got the middleware", msg.ID())
-		// 		return nil
-		// 	})
-		// })
+	r.Route("root.a.b.c", func(r choo.Receiver) {
+		r.Use(func(h choo.Handler) choo.Handler {
+			return choo.HandlerFunc(func(msg choo.Message) error {
+				fmt.Println("got the middleware", msg.ID())
+				return h.ServeMessage(msg)
+			})
+		})
+
+		r.Handle("test2", func(msg choo.Message) error {
+			defer wg.Done()
+			return nil
+		})
 
 		r.Handle("test", func(msg choo.Message) error {
 			defer wg.Done()
@@ -126,7 +131,12 @@ func TestRoute(t *testing.T) {
 	})
 
 	s := provider.Sender()
-	err = s.Send(nats.NewMessage(context.Background(), "1", "root.test", []byte("Hello World!")))
+	err = s.Send(nats.NewMessage(context.Background(), "1", "root.a.b.c.test", []byte("Hello World!")))
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.Send(nats.NewMessage(context.Background(), "2", "root.a.b.c.test2", []byte("Hello World!")))
 	if err != nil {
 		t.Error(err)
 	}
