@@ -13,10 +13,22 @@ type NatsSender struct {
 
 var _ choo.Sender = &NatsSender{}
 
-func (s *NatsSender) Send(msg choo.Message) error {
+func (s *NatsSender) Send(msg choo.Message, middlewares ...func(choo.Handler) choo.Handler) error {
 	natsMsg, ok := msg.(*NatsMessage)
 	if !ok {
 		return errors.New("message is not NatsMessage")
+	}
+
+	var handler choo.Handler
+	for _, middlewares := range middlewares {
+		handler = middlewares(handler)
+	}
+
+	if handler != nil {
+		err := handler.ServeMessage(natsMsg)
+		if err != nil {
+			return err
+		}
 	}
 
 	data, err := natsMsg.encode()

@@ -25,7 +25,7 @@ func (f HandlerFunc) ServeMessage(msg Message) error {
 }
 
 type Sender interface {
-	Send(msg Message) error
+	Send(msg Message, middlewares ...func(Handler) Handler) error
 }
 
 type Receiver interface {
