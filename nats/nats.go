@@ -16,6 +16,7 @@ type NatsOptions struct {
 	clusterID      string
 	clientID       string
 	genDurableName func(string) string
+	genQueueName   func(string) string
 	updateSequence func(string, uint64)
 	getSequence    func(string) uint64
 	logError       func(error)
@@ -42,6 +43,13 @@ func OptClientAddr(clientID, clusterID, addr string) NatsOption {
 func OptGenDurableName(fn func(string) string) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.genDurableName = fn
+		return nil
+	}
+}
+
+func OptGenQueueName(fn func(string) string) NatsOption {
+	return func(opts *NatsOptions) error {
+		opts.genQueueName = fn
 		return nil
 	}
 }

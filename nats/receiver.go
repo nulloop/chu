@@ -130,7 +130,7 @@ func (n *NatsReceiver) Handle(subject string, h choo.HandlerFunc) {
 	}, options...)
 }
 
-func (n *NatsReceiver) HandleQueue(subject string, queueName string, h choo.HandlerFunc) {
+func (n *NatsReceiver) HandleQueue(subject string, h choo.HandlerFunc) {
 
 	path := mergePath(n.path, subject)
 
@@ -148,6 +148,12 @@ func (n *NatsReceiver) HandleQueue(subject string, queueName string, h choo.Hand
 			stan.DurableName(path)
 		}
 	}
+
+	if n.opts.genQueueName == nil {
+		panic("genQueueName options must be set")
+	}
+
+	queueName := n.opts.genQueueName(path)
 
 	if queueName == "" {
 		panic("queue name is empy")

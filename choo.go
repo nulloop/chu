@@ -37,7 +37,7 @@ type Receiver interface {
 	Handle(subject string, h HandlerFunc)
 	// HandlerQueue is used for LoadBalancing the work
 	// This is ideal for distribute the load on multiple instances of same service
-	HandleQueue(subject string, queueName string, h HandlerFunc)
+	HandleQueue(subject string, h HandlerFunc)
 }
 
 type Provider interface {
