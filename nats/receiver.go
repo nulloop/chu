@@ -7,17 +7,17 @@ import (
 	"strings"
 
 	stan "github.com/nats-io/go-nats-streaming"
-	"github.com/nulloop/choo"
+	"github.com/nulloop/chu"
 )
 
 type NatsReceiver struct {
 	provier     *NatsProvider
 	path        string
 	opts        *NatsOptions
-	middlewares []func(choo.Handler) choo.Handler
+	middlewares []func(chu.Handler) chu.Handler
 }
 
-var _ choo.Receiver = &NatsReceiver{}
+var _ chu.Receiver = &NatsReceiver{}
 
 func checkPath(path string) error {
 	if path == "" {
@@ -48,16 +48,16 @@ func mergePath(base, path string) string {
 	return path
 }
 
-func (n *NatsReceiver) Use(middlewares ...func(choo.Handler) choo.Handler) {
+func (n *NatsReceiver) Use(middlewares ...func(chu.Handler) chu.Handler) {
 	n.middlewares = append(n.middlewares, middlewares...)
 }
 
-func (n *NatsReceiver) Route(path string, fn func(choo.Receiver)) choo.Receiver {
+func (n *NatsReceiver) Route(path string, fn func(chu.Receiver)) chu.Receiver {
 	path = mergePath(n.path, path)
 
 	// need to copy middle ware from parent
 	// middlewares should be stateless
-	middlewares := make([]func(choo.Handler) choo.Handler, 0)
+	middlewares := make([]func(chu.Handler) chu.Handler, 0)
 	middlewares = append(middlewares, n.middlewares...)
 
 	receiver := &NatsReceiver{
@@ -72,7 +72,7 @@ func (n *NatsReceiver) Route(path string, fn func(choo.Receiver)) choo.Receiver 
 	return receiver
 }
 
-func (n *NatsReceiver) Handle(subject string, h choo.HandlerFunc) {
+func (n *NatsReceiver) Handle(subject string, h chu.HandlerFunc) {
 	path := mergePath(n.path, subject)
 
 	options := []stan.SubscriptionOption{
@@ -92,7 +92,7 @@ func (n *NatsReceiver) Handle(subject string, h choo.HandlerFunc) {
 
 	// Here's the final handler is built up based on
 	// layers of layers of middleware
-	var handler choo.Handler = h
+	var handler chu.Handler = h
 	for _, middleware := range n.middlewares {
 		handler = middleware(handler)
 	}
@@ -130,7 +130,7 @@ func (n *NatsReceiver) Handle(subject string, h choo.HandlerFunc) {
 	}, options...)
 }
 
-func (n *NatsReceiver) HandleQueue(subject string, h choo.HandlerFunc) {
+func (n *NatsReceiver) HandleQueue(subject string, h chu.HandlerFunc) {
 
 	path := mergePath(n.path, subject)
 
@@ -161,7 +161,7 @@ func (n *NatsReceiver) HandleQueue(subject string, h choo.HandlerFunc) {
 
 	// Here's the final handler is built up based on
 	// layers of layers of middleware
-	var handler choo.Handler = h
+	var handler chu.Handler = h
 	for _, middleware := range n.middlewares {
 		handler = middleware(handler)
 	}

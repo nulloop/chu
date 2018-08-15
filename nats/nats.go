@@ -7,7 +7,7 @@ import (
 
 	gonats "github.com/nats-io/go-nats"
 	stan "github.com/nats-io/go-nats-streaming"
-	"github.com/nulloop/choo"
+	"github.com/nulloop/chu"
 )
 
 type NatsOptions struct {
@@ -75,8 +75,8 @@ func OptLogError(fn func(error)) NatsOption {
 	}
 }
 
-// make sure that NatsProvider implements all the choo.Provider
-var _ choo.Provider = &NatsProvider{}
+// make sure that NatsProvider implements all the chu.Provider
+var _ chu.Provider = &NatsProvider{}
 
 type NatsProvider struct {
 	conn             stan.Conn
@@ -87,7 +87,7 @@ type NatsProvider struct {
 	opts             *NatsOptions
 }
 
-func (p *NatsProvider) Sender() choo.Sender {
+func (p *NatsProvider) Sender() chu.Sender {
 	p.senderInitOnce.Do(func() {
 		p.sender = &NatsSender{
 			provier: p,
@@ -97,12 +97,12 @@ func (p *NatsProvider) Sender() choo.Sender {
 	return p.sender
 }
 
-func (p *NatsProvider) Receiver() choo.Receiver {
+func (p *NatsProvider) Receiver() chu.Receiver {
 	p.receiverInitOnce.Do(func() {
 		p.receiver = &NatsReceiver{
 			provier:     p,
 			opts:        p.opts,
-			middlewares: make([]func(choo.Handler) choo.Handler, 0),
+			middlewares: make([]func(chu.Handler) chu.Handler, 0),
 		}
 	})
 	return p.receiver

@@ -3,7 +3,7 @@ package nats
 import (
 	"errors"
 
-	"github.com/nulloop/choo"
+	"github.com/nulloop/chu"
 )
 
 type NatsSender struct {
@@ -11,15 +11,15 @@ type NatsSender struct {
 	opts    *NatsOptions
 }
 
-var _ choo.Sender = &NatsSender{}
+var _ chu.Sender = &NatsSender{}
 
-func (s *NatsSender) Send(msg choo.Message, middlewares ...func(choo.Handler) choo.Handler) error {
+func (s *NatsSender) Send(msg chu.Message, middlewares ...func(chu.Handler) chu.Handler) error {
 	natsMsg, ok := msg.(*NatsMessage)
 	if !ok {
 		return errors.New("message is not NatsMessage")
 	}
 
-	var handler choo.Handler
+	var handler chu.Handler
 	for _, middlewares := range middlewares {
 		handler = middlewares(handler)
 	}

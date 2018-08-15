@@ -9,8 +9,8 @@ import (
 	gonats "github.com/nats-io/go-nats"
 	"github.com/nats-io/nats-streaming-server/server"
 
-	"github.com/nulloop/choo"
-	"github.com/nulloop/choo/nats"
+	"github.com/nulloop/chu"
+	"github.com/nulloop/chu/nats"
 )
 
 func runDummyServer(clusterName string) (*server.StanServer, error) {
@@ -108,20 +108,20 @@ func TestRoute(t *testing.T) {
 
 	wg.Add(2)
 
-	r.Route("root.a.b.c", func(r choo.Receiver) {
-		r.Use(func(h choo.Handler) choo.Handler {
-			return choo.HandlerFunc(func(msg choo.Message) error {
+	r.Route("root.a.b.c", func(r chu.Receiver) {
+		r.Use(func(h chu.Handler) chu.Handler {
+			return chu.HandlerFunc(func(msg chu.Message) error {
 				fmt.Println("got the middleware", msg.ID())
 				return h.ServeMessage(msg)
 			})
 		})
 
-		r.Handle("test2", func(msg choo.Message) error {
+		r.Handle("test2", func(msg chu.Message) error {
 			defer wg.Done()
 			return nil
 		})
 
-		r.Handle("test", func(msg choo.Message) error {
+		r.Handle("test", func(msg chu.Message) error {
 			defer wg.Done()
 			if string(msg.Body()) != "Hello World!" {
 				t.Fatal("wrong message")

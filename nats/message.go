@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 
-	"github.com/nulloop/choo"
+	"github.com/nulloop/chu"
 )
 
 type meta struct {
@@ -36,7 +36,7 @@ type NatsMessage struct {
 	ctx       context.Context
 }
 
-var _ choo.Message = &NatsMessage{}
+var _ chu.Message = &NatsMessage{}
 
 func (m *NatsMessage) ID() string {
 	return m.id
@@ -62,7 +62,7 @@ func (m *NatsMessage) Context() context.Context {
 	return m.ctx
 }
 
-func (m *NatsMessage) WithContext(ctx context.Context) choo.Message {
+func (m *NatsMessage) WithContext(ctx context.Context) chu.Message {
 	return &NatsMessage{
 		id:        m.id,
 		subject:   m.subject,

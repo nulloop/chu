@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nulloop/choo/middleware"
+	"github.com/nulloop/chu/middleware"
 )
 
 func TestHeartBeat(t *testing.T) {
