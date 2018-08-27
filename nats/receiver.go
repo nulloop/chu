@@ -72,6 +72,24 @@ func (n *NatsReceiver) Route(path string, fn func(chu.Receiver)) chu.Receiver {
 	return receiver
 }
 
+func (n *NatsReceiver) Group(fn func(chu.Receiver)) chu.Receiver {
+	// need to copy middle ware from parent
+	// middlewares should be stateless
+	middlewares := make([]func(chu.Handler) chu.Handler, 0)
+	middlewares = append(middlewares, n.middlewares...)
+
+	receiver := &NatsReceiver{
+		path:        n.path,
+		provier:     n.provier,
+		opts:        n.opts,
+		middlewares: middlewares,
+	}
+
+	fn(receiver)
+
+	return receiver
+}
+
 func (n *NatsReceiver) Handle(subject string, h chu.HandlerFunc) {
 	path := mergePath(n.path, subject)
 

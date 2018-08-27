@@ -31,6 +31,8 @@ type Sender interface {
 type Receiver interface {
 	Use(middlewares ...func(Handler) Handler)
 	Route(path string, fn func(Receiver)) Receiver
+	// Group can be use to apply midddleware to only group of handlers
+	Group(fn func(Receiver)) Receiver
 	// Handle is similar to Fanout. Everyone will receive the copy of message
 	// This is ideal for replication of events that needs to be stored on multiple instances of
 	// same service
