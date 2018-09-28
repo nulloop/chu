@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	gonats "github.com/nats-io/go-nats"
 	"github.com/nats-io/nats-streaming-server/server"
@@ -12,6 +13,10 @@ import (
 	"github.com/nulloop/chu"
 	"github.com/nulloop/chu/nats"
 )
+
+func aggregateIDGen() string {
+	return fmt.Sprintf("%d", time.Now().Nanosecond())
+}
 
 func runDummyServer(clusterName string) (*server.StanServer, error) {
 	s, err := server.RunServer(clusterName)
@@ -142,4 +147,8 @@ func TestRoute(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func init() {
+	chu.AggregateIDGen = aggregateIDGen
 }

@@ -9,8 +9,9 @@ import (
 )
 
 type meta struct {
-	ID   string
-	Body []byte
+	ID          string
+	AggregateID string
+	Body        []byte
 }
 
 func (i *meta) encode() ([]byte, error) {
@@ -28,18 +29,23 @@ func (i *meta) decode(data []byte) error {
 }
 
 type NatsMessage struct {
-	id        string
-	subject   string
-	body      []byte
-	sequence  uint64
-	timestamp int64
-	ctx       context.Context
+	id          string
+	aggregateID string
+	subject     string
+	body        []byte
+	sequence    uint64
+	timestamp   int64
+	ctx         context.Context
 }
 
 var _ chu.Message = &NatsMessage{}
 
 func (m *NatsMessage) ID() string {
 	return m.id
+}
+
+func (m *NatsMessage) AggregateID() string {
+	return m.aggregateID
 }
 
 func (m *NatsMessage) Subject() string {
@@ -64,19 +70,31 @@ func (m *NatsMessage) Context() context.Context {
 
 func (m *NatsMessage) WithContext(ctx context.Context) chu.Message {
 	return &NatsMessage{
-		id:        m.id,
-		subject:   m.subject,
-		body:      m.body,
-		sequence:  m.sequence,
-		timestamp: m.timestamp,
-		ctx:       ctx,
+		id:          m.id,
+		aggregateID: m.aggregateID,
+		subject:     m.subject,
+		body:        m.body,
+		sequence:    m.sequence,
+		timestamp:   m.timestamp,
+		ctx:         ctx,
+	}
+}
+
+func (m *NatsMessage) Extend(id string, subject string, body []byte) chu.Message {
+	return &NatsMessage{
+		id:          id,
+		aggregateID: m.aggregateID,
+		subject:     subject,
+		body:        body,
+		ctx:         m.ctx,
 	}
 }
 
 func (m *NatsMessage) encode() ([]byte, error) {
 	meta := &meta{
-		ID:   m.id,
-		Body: m.body,
+		ID:          m.id,
+		AggregateID: m.aggregateID,
+		Body:        m.body,
 	}
 	return meta.encode()
 }
@@ -90,15 +108,17 @@ func (m *NatsMessage) decode(data []byte) error {
 
 	m.id = meta.ID
 	m.body = meta.Body
+	m.aggregateID = meta.AggregateID
 
 	return nil
 }
 
 func NewMessage(ctx context.Context, id string, subject string, body []byte) *NatsMessage {
 	return &NatsMessage{
-		id:      id,
-		subject: subject,
-		body:    body,
-		ctx:     ctx,
+		id:          id,
+		aggregateID: chu.AggregateIDGen(),
+		subject:     subject,
+		body:        body,
+		ctx:         ctx,
 	}
 }
