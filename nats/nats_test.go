@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	gonats "github.com/nats-io/go-nats"
 	"github.com/nats-io/nats-streaming-server/server"
@@ -13,10 +12,6 @@ import (
 	"github.com/nulloop/chu"
 	"github.com/nulloop/chu/nats"
 )
-
-func aggregateIDGen() string {
-	return fmt.Sprintf("%d", time.Now().Nanosecond())
-}
 
 func runDummyServer(clusterName string) (*server.StanServer, error) {
 	s, err := server.RunServer(clusterName)
@@ -136,19 +131,15 @@ func TestRoute(t *testing.T) {
 	})
 
 	s := provider.Sender()
-	err = s.Send(nats.NewMessage(context.Background(), "1", "root.a.b.c.test", []byte("Hello World!")))
+	err = s.Send(nats.NewMessage(context.Background(), "1", "a:1", "root.a.b.c.test", []byte("Hello World!")))
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = s.Send(nats.NewMessage(context.Background(), "2", "root.a.b.c.test2", []byte("Hello World!")))
+	err = s.Send(nats.NewMessage(context.Background(), "2", "a:2", "root.a.b.c.test2", []byte("Hello World!")))
 	if err != nil {
 		t.Error(err)
 	}
 
 	wg.Wait()
-}
-
-func init() {
-	chu.AggregateIDGen = aggregateIDGen
 }

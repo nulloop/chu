@@ -56,10 +56,12 @@ func (m *NatsMessage) Body() []byte {
 	return m.body
 }
 
+// Sequence is the nats internal sequence number. it will be set by the library
 func (m *NatsMessage) Sequence() uint64 {
 	return m.sequence
 }
 
+// Timestamp is the nats internal timestamp. it will be set by the library
 func (m *NatsMessage) Timestamp() int64 {
 	return m.timestamp
 }
@@ -68,6 +70,8 @@ func (m *NatsMessage) Context() context.Context {
 	return m.ctx
 }
 
+// WithContext copy everything and return a new Message object. however, body
+// won't be copied as body message should be the same
 func (m *NatsMessage) WithContext(ctx context.Context) chu.Message {
 	return &NatsMessage{
 		id:          m.id,
@@ -77,16 +81,6 @@ func (m *NatsMessage) WithContext(ctx context.Context) chu.Message {
 		sequence:    m.sequence,
 		timestamp:   m.timestamp,
 		ctx:         ctx,
-	}
-}
-
-func (m *NatsMessage) Extend(id string, subject string, body []byte) chu.Message {
-	return &NatsMessage{
-		id:          id,
-		aggregateID: m.aggregateID,
-		subject:     subject,
-		body:        body,
-		ctx:         m.ctx,
 	}
 }
 
@@ -113,10 +107,12 @@ func (m *NatsMessage) decode(data []byte) error {
 	return nil
 }
 
-func NewMessage(ctx context.Context, id string, subject string, body []byte) *NatsMessage {
+// NewMessage creates a new chu.Message compatibale which works with nats
+// Use this for sending Message
+func NewMessage(ctx context.Context, id, aggregateID, subject string, body []byte) *NatsMessage {
 	return &NatsMessage{
 		id:          id,
-		aggregateID: chu.AggregateIDGen(),
+		aggregateID: aggregateID,
 		subject:     subject,
 		body:        body,
 		ctx:         ctx,

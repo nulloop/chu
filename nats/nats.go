@@ -40,6 +40,8 @@ func OptClientAddr(clientID, clusterID, addr string) NatsOption {
 	}
 }
 
+// OptGenDurableName is an optional that creates a proper durable name
+// if you provide this method, every channel will be created with durable name based on path
 func OptGenDurableName(fn func(string) string) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.genDurableName = fn
@@ -47,6 +49,9 @@ func OptGenDurableName(fn func(string) string) NatsOption {
 	}
 }
 
+// OptGenQueueName is required if QueueHandle is being used, if not provided panic will happen to stop the program.
+// the given function receives path and it needs to return an string represents quene name.
+// make sure that this method is pure function and predictable
 func OptGenQueueName(fn func(string) string) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.genQueueName = fn
@@ -54,6 +59,10 @@ func OptGenQueueName(fn func(string) string) NatsOption {
 	}
 }
 
+// OptUpdateSequence is an optional and a helper function which will be called
+// for every receive message. this function can be used to implement warm up feature.
+// As an example, a key value store can be used to store the last sequence id for given path.
+// and OptGetSequence option can be use to retrive it.
 func OptUpdateSequence(fn func(string, uint64)) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.updateSequence = fn
@@ -61,6 +70,9 @@ func OptUpdateSequence(fn func(string, uint64)) NatsOption {
 	}
 }
 
+// OptGetSequence is an optional and a helper function which complements `OptUpdateSequence`
+// it will be called upon registering the route to nats stream and it starts with given sequence.
+// if it returns 0, it will ask Nats to send every single messages.
 func OptGetSequence(fn func(string) uint64) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.getSequence = fn
@@ -68,6 +80,7 @@ func OptGetSequence(fn func(string) uint64) NatsOption {
 	}
 }
 
+// OptLogError is an optional and will be called if an internal error happens
 func OptLogError(fn func(error)) NatsOption {
 	return func(opts *NatsOptions) error {
 		opts.logError = fn
@@ -81,22 +94,30 @@ var _ chu.Provider = &NatsProvider{}
 type NatsProvider struct {
 	conn             stan.Conn
 	receiver         *NatsReceiver
-	sender           *NatsSender
 	receiverInitOnce sync.Once
 	senderInitOnce   sync.Once
 	opts             *NatsOptions
 }
 
-func (p *NatsProvider) Sender() chu.Sender {
-	p.senderInitOnce.Do(func() {
-		p.sender = &NatsSender{
-			provier: p,
-			opts:    p.opts,
-		}
-	})
-	return p.sender
+// Sender accepts list of middleware and creates a brand new Sender object
+// Sender object is unique per middleware. It is a best practice to call this method once
+// if you are not planning to change the middleware and assign it to somewhere so you can access it later
+// the return object is also thread-safe as long as middlewares are pure stateless fucntions.
+func (p *NatsProvider) Sender(middlewares ...func(chu.Handler) chu.Handler) chu.Sender {
+	var handler chu.Handler
+	for _, middlewares := range middlewares {
+		handler = middlewares(handler)
+	}
+
+	return &NatsSender{
+		provier:     p,
+		opts:        p.opts,
+		middlewares: handler,
+	}
 }
 
+// Receiver always return the root Reciver. It only creates the root receiver once.
+// if you want to create a chain of Receiver, use Receiver `Group` and `Route` methods
 func (p *NatsProvider) Receiver() chu.Receiver {
 	p.receiverInitOnce.Do(func() {
 		p.receiver = &NatsReceiver{

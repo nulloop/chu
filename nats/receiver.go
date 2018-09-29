@@ -10,6 +10,12 @@ import (
 	"github.com/nulloop/chu"
 )
 
+var (
+	ErrPathRequired         = errors.New("path can't be empty string.")
+	ErrPathStartedWithPoint = errors.New("path should not start with '.'.")
+	ErrPathEndedWithPoint   = errors.New("path should not end with '.'.")
+)
+
 type NatsReceiver struct {
 	provier     *NatsProvider
 	path        string
@@ -21,15 +27,15 @@ var _ chu.Receiver = &NatsReceiver{}
 
 func checkPath(path string) error {
 	if path == "" {
-		return errors.New("path can't be empty string")
+		return ErrPathRequired
 	}
 
 	if strings.Index(path, ".") == 0 {
-		return errors.New("path should not start with '.'")
+		return ErrPathStartedWithPoint
 	}
 
 	if strings.LastIndex(path, ".") == len(path)-1 {
-		return errors.New("path should not end with '.'")
+		return ErrPathEndedWithPoint
 	}
 
 	return nil
@@ -149,7 +155,6 @@ func (n *NatsReceiver) Handle(subject string, h chu.HandlerFunc) {
 }
 
 func (n *NatsReceiver) HandleQueue(subject string, h chu.HandlerFunc) {
-
 	path := mergePath(n.path, subject)
 
 	options := []stan.SubscriptionOption{

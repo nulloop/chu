@@ -6,26 +6,26 @@ import (
 	"github.com/nulloop/chu"
 )
 
+var (
+	ErrNotNatsMessage = errors.New("message is not NatsMessage")
+)
+
 type NatsSender struct {
-	provier *NatsProvider
-	opts    *NatsOptions
+	provier     *NatsProvider
+	opts        *NatsOptions
+	middlewares chu.Handler
 }
 
 var _ chu.Sender = &NatsSender{}
 
-func (s *NatsSender) Send(msg chu.Message, middlewares ...func(chu.Handler) chu.Handler) error {
+func (s *NatsSender) Send(msg chu.Message) error {
 	natsMsg, ok := msg.(*NatsMessage)
 	if !ok {
-		return errors.New("message is not NatsMessage")
+		return ErrNotNatsMessage
 	}
 
-	var handler chu.Handler
-	for _, middlewares := range middlewares {
-		handler = middlewares(handler)
-	}
-
-	if handler != nil {
-		err := handler.ServeMessage(natsMsg)
+	if s.middlewares != nil {
+		err := s.middlewares.ServeMessage(natsMsg)
 		if err != nil {
 			return err
 		}

@@ -4,10 +4,6 @@ import (
 	"context"
 )
 
-// AggregateIDGen is a function which generate aggregate id for each new message
-// this function needs to be set based on desire state before the program sends or receives messages
-var AggregateIDGen func() string
-
 type Message interface {
 	ID() string
 	AggregateID() string
@@ -17,9 +13,6 @@ type Message interface {
 	Timestamp() int64
 	Context() context.Context
 	WithContext(context.Context) Message
-	// Extend accepts id, subject, and body and preserve aggregate
-	// make sure AggregateIDGen is set
-	Extend(string, string, []byte) Message
 }
 
 type Handler interface {
@@ -33,7 +26,7 @@ func (f HandlerFunc) ServeMessage(msg Message) error {
 }
 
 type Sender interface {
-	Send(msg Message, middlewares ...func(Handler) Handler) error
+	Send(msg Message) error
 }
 
 type Receiver interface {
@@ -51,7 +44,7 @@ type Receiver interface {
 }
 
 type Provider interface {
-	Sender() Sender
+	Sender(middlewares ...func(Handler) Handler) Sender
 	Receiver() Receiver
 	Close() error
 }

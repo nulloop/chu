@@ -23,7 +23,18 @@ func main() {
     })
   })
 
+  messageID := "1"
+  aggregateID := "2"
+
   // some where in code
-  r.Sender().Send(nats.NewMessage(context.Background(), "1", "a.b.c.test", []byte("hello world")))
+  r.Sender().Send(
+    nats.NewMessage(
+      context.Background(),
+      messageID,
+      aggregateID,
+      "a.b.c.test",
+      []byte("hello world"),
+    ),
+  )
 }
 ```
