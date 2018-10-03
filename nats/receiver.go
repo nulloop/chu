@@ -105,6 +105,8 @@ func (n *NatsReceiver) Handle(subject string, h chu.HandlerFunc) {
 
 	if n.opts.getSequence != nil {
 		options = append(options, stan.StartAtSequence(n.opts.getSequence(path)))
+	} else {
+		options = append(options, stan.DeliverAllAvailable())
 	}
 
 	if n.opts.genDurableName != nil {
@@ -163,6 +165,8 @@ func (n *NatsReceiver) HandleQueue(subject string, h chu.HandlerFunc) {
 
 	if n.opts.getSequence != nil {
 		options = append(options, stan.StartAtSequence(n.opts.getSequence(path)))
+	} else {
+		options = append(options, stan.DeliverAllAvailable())
 	}
 
 	if n.opts.genDurableName != nil {

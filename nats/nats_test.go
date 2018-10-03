@@ -13,30 +13,25 @@ import (
 	"github.com/nulloop/chu/nats"
 )
 
-func runDummyServer(clusterName string) (*server.StanServer, error) {
-	s, err := server.RunServer(clusterName)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
-}
+const (
+	clusterName = "dummy_server"
+	subject     = "root.a.b.c.test2"
+)
 
-func TestRunDummyServer(t *testing.T) {
-	server, err := runDummyServer("dummy_server")
+func TestMain(m *testing.M) {
+	natsStreamServer, err := server.RunServer(clusterName)
 	if err != nil {
-		t.Error(err)
+		panic(err)
 	}
-	server.Shutdown()
+
+	defer natsStreamServer.Shutdown()
+	exitCode := m.Run()
+
+	fmt.Printf("exit code: %d\n", exitCode)
 }
 
 func TestCreateNewProvider(t *testing.T) {
-	server, err := runDummyServer("dummy_server")
-	if err != nil {
-		t.Error(err)
-	}
-	defer server.Shutdown()
-
-	provider, err := nats.NewProvider(nats.OptClientAddr("client", "dummy_server", gonats.DefaultURL))
+	provider, err := nats.NewProvider(nats.OptClientAddr("client", clusterName, gonats.DefaultURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,13 +40,7 @@ func TestCreateNewProvider(t *testing.T) {
 }
 
 func TestCreateSender(t *testing.T) {
-	server, err := runDummyServer("dummy_server")
-	if err != nil {
-		t.Error(err)
-	}
-	defer server.Shutdown()
-
-	provider, err := nats.NewProvider(nats.OptClientAddr("client", "dummy_server", gonats.DefaultURL))
+	provider, err := nats.NewProvider(nats.OptClientAddr("client", clusterName, gonats.DefaultURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,13 +52,7 @@ func TestCreateSender(t *testing.T) {
 }
 
 func TestSendNilMessage(t *testing.T) {
-	server, err := runDummyServer("dummy_server")
-	if err != nil {
-		t.Error(err)
-	}
-	defer server.Shutdown()
-
-	provider, err := nats.NewProvider(nats.OptClientAddr("client", "dummy_server", gonats.DefaultURL))
+	provider, err := nats.NewProvider(nats.OptClientAddr("client", clusterName, gonats.DefaultURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,13 +74,7 @@ func TestSendNilMessage(t *testing.T) {
 func TestRoute(t *testing.T) {
 	var wg sync.WaitGroup
 
-	server, err := runDummyServer("dummy_server")
-	if err != nil {
-		t.Error(err)
-	}
-	defer server.Shutdown()
-
-	provider, err := nats.NewProvider(nats.OptClientAddr("client", "dummy_server", gonats.DefaultURL))
+	provider, err := nats.NewProvider(nats.OptClientAddr("client", clusterName, gonats.DefaultURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,4 +119,92 @@ func TestRoute(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// create server
+// send 3 messages
+// create client and connect to server with QueueHandle with sequence 0
+// disconnect client
+// reconnect the same client with sequence number 3
+// it should not receive any message
+func TestSenario1(t *testing.T) {
+
+	subject := "root.a.b.c.d.e"
+
+	client1, err := nats.NewProvider(
+		nats.OptClientAddr("client", clusterName, gonats.DefaultURL),
+		nats.OptGenDurableName(func(path string) string {
+			return fmt.Sprintf("durable1.%s", path)
+		}),
+		nats.OptGenQueueName(func(path string) string {
+			return fmt.Sprintf("queue1.%s", path)
+		}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// r := client1.Receiver()
+	// r.Handle(subject, func(msg chu.Message) error {
+	// 	fmt.Println("got message")
+	// 	return nil
+	// })
+
+	// send 3 messages
+
+	sender := client1.Sender()
+
+	for i := 0; i < 3; i++ {
+		id := fmt.Sprintf("%d", i)
+		aggregateID := fmt.Sprintf("a:%d", i)
+		body := fmt.Sprintf("Hello Message %d", i)
+		err := sender.Send(nats.NewMessage(context.Background(), id, aggregateID, subject, []byte(body)))
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("sending message")
+	}
+
+	err = client1.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client2, err := nats.NewProvider(
+		nats.OptClientAddr("client2", clusterName, gonats.DefaultURL),
+		nats.OptGenDurableName(func(path string) string {
+			return fmt.Sprintf("durable2.%s", path)
+		}),
+		nats.OptGenQueueName(func(path string) string {
+			return fmt.Sprintf("queue2.%s", path)
+		}),
+		nats.OptUpdateSequence(func(path string, sequence uint64) {
+
+		}),
+		nats.OptGetSequence(func(path string) uint64 {
+			return 1
+		}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer client2.Close()
+
+	// create client and connect to server with QueueHandle with sequence 0
+	var wg sync.WaitGroup
+	wg.Add(3)
+	r := client2.Receiver()
+	r.HandleQueue(subject, func(msg chu.Message) error {
+		defer wg.Done()
+
+		fmt.Println("got a message for id: ", msg.ID())
+
+		return nil
+	})
+
+	fmt.Println("waiting...")
+
+	wg.Wait()
+
 }
