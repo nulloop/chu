@@ -1,0 +1,27 @@
+version: '3.5'
+
+services:
+  chu-server:
+    image: nats-streaming:0.12.2
+    container_name: chu-server
+
+    # networks:
+    #   - chu-server
+
+    ports:
+      - '4222:4222'
+      - '8222:8222'
+
+    command: -stan_config /etc/nats-streaming.conf -config /etc/nats.conf -m 8222
+
+    volumes:
+      - ./etc/cert:/etc/cert:ro
+      - ./etc/nats-streaming.conf:/etc/nats-streaming.conf:ro
+      - ./etc/nats.conf:/etc/nats.conf:ro
+      - ./etc/upload.sh:/etc/upload.sh:ro
+      - ./storage:/storage
+      - ./backup:/backup
+# networks:
+#   chu-server:
+#     name: chu-server
+#     driver: bridge
