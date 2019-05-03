@@ -107,6 +107,7 @@ type Nats struct {
 	ackTimeout       time.Duration
 	wait             func()
 	tick             func()
+	done             func() <-chan struct{}
 	uniqueMsgChecker func(id string) bool
 	conn             stan.Conn
 	codec            []chu.Codec
@@ -146,8 +147,28 @@ func (n *Nats) Subscribe(sub chu.Subscriber) (chu.Subscription, error) {
 		options = append(options, stan.AckWait(n.ackTimeout))
 	}
 
+	group := sub.Group()
+	isGroupHandler := group != ""
+
 	handler := func(msg *stan.Msg) {
 		n.tick()
+
+		// this `select` is a necessary logic to prevent calling
+		// queue handler during warm-up time. Queue handler should not be called
+		// as they are design to generate more events or talk to external services
+		// generating events are prohabited during warm-up time.
+		select {
+		case <-n.done():
+			// ignore
+		default:
+			// default will be called because we are still in
+			// warmup time and we want to make sure that if handler is a group handler
+			// it should not be executed.
+			if isGroupHandler {
+				msg.Ack()
+				return
+			}
+		}
 
 		event := &NatsEvent{
 			codec: n.codec,
@@ -177,12 +198,10 @@ func (n *Nats) Subscribe(sub chu.Subscriber) (chu.Subscription, error) {
 
 	var subscription stan.Subscription
 
-	group := sub.Group()
-
-	if group == "" {
-		subscription, err = n.conn.Subscribe(sub.Topic(), handler, options...)
-	} else {
+	if isGroupHandler {
 		subscription, err = n.conn.QueueSubscribe(sub.Topic(), group, handler, options...)
+	} else {
+		subscription, err = n.conn.Subscribe(sub.Topic(), handler, options...)
 	}
 
 	if err != nil {
@@ -280,7 +299,7 @@ func NewNats(opt *NatsOptions) (*Nats, error) {
 		break
 	}
 
-	broker.wait, broker.tick = heartbeat.New(opt.WarmUpTimeout)
+	broker.wait, broker.tick, broker.done = heartbeat.New(opt.WarmUpTimeout)
 
 	return broker, nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func TestHeartBeat(t *testing.T) {
-	wait, tick := heartbeat.New(3 * time.Second)
+	wait, tick, _ := heartbeat.New(3 * time.Second)
 
 	go func() {
 		for i := 0; i < 10; i++ {

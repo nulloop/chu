@@ -28,7 +28,7 @@ func (s *signal) next() bool {
 	}
 }
 
-func New(timeout time.Duration) (wait func(), tick func()) {
+func New(timeout time.Duration) (wait func(), tick func(), done func() <-chan struct{}) {
 	signal := &signal{
 		done:    make(chan struct{}),
 		data:    make(chan struct{}),
@@ -43,6 +43,10 @@ func New(timeout time.Duration) (wait func(), tick func()) {
 		signal.tick()
 	}
 
+	done = func() <-chan struct{} {
+		return signal.done
+	}
+
 	go func() {
 		defer close(signal.done)
 		for {
@@ -52,5 +56,5 @@ func New(timeout time.Duration) (wait func(), tick func()) {
 		}
 	}()
 
-	return wait, tick
+	return wait, tick, done
 }
