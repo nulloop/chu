@@ -227,6 +227,13 @@ func (n *Nats) CreateEvent(eventOpts chu.EventOptions) (chu.Event, error) {
 	var err error
 
 	if eventOpts.Message != nil {
+		for _, c := range n.codec {
+			err := c.Encode(eventOpts.Message)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		body, err = eventOpts.Message.MsgEncode()
 		if err != nil {
 			return nil, err
