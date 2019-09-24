@@ -5,26 +5,15 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
-	"errors"
 	"io"
-	"reflect"
+
+	"github.com/alinz/conceal"
 
 	"github.com/nulloop/chu"
 )
 
-const (
-	tagFieldTarget = "personal"
-)
-
-var (
-	ErrNotPointer          = errors.New("not pass as pointer")
-	ErrMultiplePersonalIDs = errors.New("multiple personal ids detected")
-	ErrPersonalIDNotString = errors.New("personal id must be string")
-	ErrPersonalIDEmpty     = errors.New("personal id is empty")
-)
-
 var _ chu.Codec = &FieldsEncryption{}
+var _ conceal.Cipher = &FieldsEncryption{}
 
 // KeyFinder is an interface which abstract how key can be access
 // for encrypt and decrypt
@@ -34,168 +23,42 @@ type KeyFinder interface {
 	LookupKey(id string) (string, error)
 }
 
+// FieldsEncryption is base codec that responsible
+// for detecting and encrypting and decrypting fields before and after
+// being publish and consume in message bus
 type FieldsEncryption struct {
 	finder KeyFinder
 }
 
+// Encode is a method that satisfy the chu's Codec interface
+// and it's responsible is to call internal conceal's package to encrypt all
+// targeted fields
 func (fe *FieldsEncryption) Encode(ptrMsg interface{}) error {
-	return fe.encrypt(ptrMsg, "")
+	return conceal.Encrypt(ptrMsg, fe)
 }
 
+// Decode is a method that satisfy the chu's Codec interface
+// and it's responsible is to call internal conceal's package to decrypt all
+// targeted fields
 func (fe *FieldsEncryption) Decode(ptrMsg interface{}) error {
-	return fe.decrypt(ptrMsg, "")
+	return conceal.Decrypt(ptrMsg, fe)
 }
 
-func (fe *FieldsEncryption) encrypt(ptr interface{}, givenKey string) error {
-	val := reflect.ValueOf(ptr)
-	if val.IsNil() {
-		return nil
-	}
-
-	if val.Kind() != reflect.Ptr {
-		return ErrNotPointer
-	}
-
-	elm := val.Elem()
-
-	id, indexes, err := extract(elm)
-	if err != nil {
-		return err
-	}
-
-	if givenKey == "" {
-		givenKey, err = fe.finder.LookupKey(id)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, idx := range indexes {
-		field := elm.Field(idx)
-
-		switch field.Kind() {
-		case reflect.String:
-			plainAsBytes := []byte(field.Interface().(string))
-			encryptedAsBytes, err := encrypt(plainAsBytes, givenKey)
-			if err != nil {
-				return err
-			}
-			field.SetString(base64.StdEncoding.EncodeToString(encryptedAsBytes))
-		case reflect.Slice:
-			for i := 0; i < field.Len(); i++ {
-				itemPtr := field.Index(i).Interface()
-				err := fe.encrypt(itemPtr, givenKey)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (fe *FieldsEncryption) decrypt(ptr interface{}, givenKey string) error {
-	val := reflect.ValueOf(ptr)
-	if val.IsNil() {
-		return nil
-	}
-
-	if val.Kind() != reflect.Ptr {
-		return ErrNotPointer
-	}
-
-	elm := val.Elem()
-
-	id, indexes, err := extract(elm)
-	if err != nil {
-		return err
-	}
-
-	if givenKey == "" {
-		givenKey, err = fe.finder.LookupKey(id)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, idx := range indexes {
-		field := elm.Field(idx)
-		switch field.Kind() {
-		case reflect.String:
-			inputAsBase64 := field.Interface().(string)
-			encryptedAsBytes, err := base64.StdEncoding.DecodeString(inputAsBase64)
-			if err != nil {
-				return err
-			}
-
-			decryptedAsBytes, err := decrypt(encryptedAsBytes, givenKey)
-			if err != nil {
-				err = nil
-				elm.Field(idx).SetString("")
-				continue
-			}
-
-			elm.Field(idx).SetString(string(decryptedAsBytes))
-		case reflect.Slice:
-			for i := 0; i < field.Len(); i++ {
-				itemPtr := field.Index(i).Interface()
-				err := fe.decrypt(itemPtr, givenKey)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func NewFieldsEncryption(finder KeyFinder) *FieldsEncryption {
-	return &FieldsEncryption{
-		finder: finder,
-	}
-}
-
-func extract(elm reflect.Value) (id string, indexes []int, err error) {
-	ok := false
-	indexes = make([]int, 0)
-
-	for i := 0; i < elm.NumField(); i++ {
-		tag := elm.Type().Field(i).Tag.Get(tagFieldTarget)
-		if tag == "" {
-			continue
-		}
-
-		if tag == "data" {
-			indexes = append(indexes, i)
-		} else if tag == "id" {
-			if id != "" {
-				return "", nil, ErrMultiplePersonalIDs
-			}
-
-			id, ok = elm.Field(i).Interface().(string)
-			if !ok {
-				return "", nil, ErrPersonalIDNotString
-			}
-			if id == "" {
-				return "", nil, ErrPersonalIDEmpty
-			}
-		}
-	}
-
-	return
-}
-
-// Hash converts given string into sha256 hash bytes
-func hash(key string) []byte {
+func (fe *FieldsEncryption) hash(key string) []byte {
 	data := sha256.Sum256([]byte(key))
 	return data[0:]
 }
 
-// encrypt converts plain data  encrypt it uses AES and passphrase
-func encrypt(data []byte, passphrase string) ([]byte, error) {
-	block, _ := aes.NewCipher(hash(passphrase))
+// Encrypt is method that satisfy the conceal's Cipher interface
+// It gets the id and call LookupKey method to find a key for given id
+// and it encrypt the value
+func (fe *FieldsEncryption) Encrypt(value []byte, id string) ([]byte, error) {
+	key, err := fe.finder.LookupKey(id)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := aes.NewCipher(fe.hash(key))
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
@@ -206,14 +69,20 @@ func encrypt(data []byte, passphrase string) ([]byte, error) {
 		return nil, err
 	}
 
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	ciphertext := gcm.Seal(nonce, nonce, value, nil)
 	return ciphertext, nil
 }
 
-// decrypt converted encrypted data to plain text using passphrase and AES protocol
-func decrypt(data []byte, passphrase string) ([]byte, error) {
-	key := hash(passphrase)
-	block, err := aes.NewCipher(key)
+// Decrypt is method that satisfy the conceal's Cipher interface
+// It gets the id and call LookupKey method to find a key for given id
+// and it decrypt the value
+func (fe *FieldsEncryption) Decrypt(value []byte, id string) ([]byte, error) {
+	key, err := fe.finder.LookupKey(id)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(fe.hash(key))
 	if err != nil {
 		return nil, err
 	}
@@ -224,11 +93,19 @@ func decrypt(data []byte, passphrase string) ([]byte, error) {
 	}
 
 	nonceSize := gcm.NonceSize()
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	nonce, ciphertext := value[:nonceSize], value[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return plaintext, nil
+}
+
+// NewFieldsEncryption creates a FieldsEncryption that uses conceal package
+// to encrypt/decrypt personal fields
+func NewFieldsEncryption(finder KeyFinder) *FieldsEncryption {
+	return &FieldsEncryption{
+		finder: finder,
+	}
 }

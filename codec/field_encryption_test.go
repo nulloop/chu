@@ -30,9 +30,9 @@ func NewMemoryKeyFinder() *MemoryKeyFinder {
 }
 
 type User struct {
-	ID        string `personal:"id"`
+	ID        string `conceal:"id"`
 	FirstName string
-	Email     string `personal:"data"`
+	Email     string `conceal:"data"`
 }
 
 func (u *User) Encode() ([]byte, error) {
@@ -135,5 +135,45 @@ func TestKeyRemovedEncryption(t *testing.T) {
 
 	if user.Email != "" {
 		t.Fatalf("user.Email must be empty string but got %s", user.Email)
+	}
+}
+
+func TestMultiLevelEncryption(t *testing.T) {
+
+	type Class struct {
+		Name string `conceal:"data"`
+	}
+
+	type User struct {
+		ID      string   `conceal:"id"`
+		Name    string   `conceal:"data"`
+		Classes []*Class `conceal:"data"`
+	}
+
+	user := &User{
+		ID:   "1",
+		Name: "John",
+		Classes: []*Class{
+			{Name: "Class A"},
+			{Name: "Class B"},
+		},
+	}
+
+	keyFinder := NewMemoryKeyFinder()
+
+	fieldEncryption := codec.NewFieldsEncryption(keyFinder)
+
+	err := fieldEncryption.Encode(user)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if user.Name == "John" {
+		t.Fatal("expect Name field to be encrypted")
+	}
+
+	err = fieldEncryption.Decode(user)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
