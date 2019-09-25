@@ -9,9 +9,9 @@ import (
 	gonats "github.com/nats-io/go-nats"
 	stan "github.com/nats-io/go-nats-streaming"
 
-	"github.com/nulloop/chu"
-	"github.com/nulloop/chu/binary"
-	"github.com/nulloop/chu/heartbeat"
+	"github.com/nulloop/chu/v2"
+	"github.com/nulloop/chu/v2/binary"
+	"github.com/nulloop/chu/v2/heartbeat"
 )
 
 var _ chu.Event = &NatsEvent{}

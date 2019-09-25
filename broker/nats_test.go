@@ -10,9 +10,9 @@ import (
 	"github.com/nats-io/nats-streaming-server/server"
 	"github.com/rs/xid"
 
-	"github.com/nulloop/chu"
-	"github.com/nulloop/chu/binary"
-	"github.com/nulloop/chu/broker"
+	"github.com/nulloop/chu/v2"
+	"github.com/nulloop/chu/v2/binary"
+	"github.com/nulloop/chu/v2/broker"
 )
 
 const (

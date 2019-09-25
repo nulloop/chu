@@ -9,7 +9,7 @@ import (
 
 	"github.com/alinz/conceal"
 
-	"github.com/nulloop/chu"
+	"github.com/nulloop/chu/v2"
 )
 
 var _ chu.Codec = &FieldsEncryption{}

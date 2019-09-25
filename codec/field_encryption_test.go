@@ -3,8 +3,8 @@ package codec_test
 import (
 	"testing"
 
-	"github.com/nulloop/chu/binary"
-	"github.com/nulloop/chu/codec"
+	"github.com/nulloop/chu/v2/binary"
+	"github.com/nulloop/chu/v2/codec"
 )
 
 var _ codec.KeyFinder = &MemoryKeyFinder{}

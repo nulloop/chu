@@ -1,4 +1,4 @@
-module github.com/nulloop/chu
+module github.com/nulloop/chu/v2
 
 go 1.12
 

@@ -3,7 +3,7 @@ package unique_test
 import (
 	"testing"
 
-	"github.com/nulloop/chu/unique"
+	"github.com/nulloop/chu/v2/unique"
 )
 
 func TestIdempotency(t *testing.T) {

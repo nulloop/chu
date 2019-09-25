@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nulloop/chu/binary"
+	"github.com/nulloop/chu/v2/binary"
 )
 
 func TestEncodingDecoding(t *testing.T) {
