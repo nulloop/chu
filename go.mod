@@ -22,6 +22,6 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/rs/xid v1.2.1
 	go.etcd.io/bbolt v1.3.2 // indirect
-	golang.org/x/sys v0.0.0-20190322080309-f49334f85ddc // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 )
